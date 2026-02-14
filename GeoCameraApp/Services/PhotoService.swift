@@ -158,27 +158,33 @@ class PhotoService: PhotoServiceProtocol {
         let textWidth = maxWidth + padding * 2
         let totalHeight = CGFloat(lines.count) * lineHeight + padding * 2
 
-        // 根據橫向方向決定旋轉角度和位置
+        // 橫向模式：浮水印在左側中央偏下
+        // 需要旋轉 90 度使文字水平顯示
         let margin: CGFloat = 40
+        let bottomOffset: CGFloat = 100  // 向上偏移，避開拍照按鈕
+        
         var rotationAngle: CGFloat = 0
         var translationX: CGFloat = 0
         var translationY: CGFloat = 0
         
         if deviceOrientation == .landscapeLeft {
-            // Home 鍵在左側 → 文字需要順時針旋轉 90 度
+            // Home 鍵在左側 → 相機拍攝時，文字需要順時針旋轉 90 度
+            // 浮水印位置：左側中央偏下
             rotationAngle = .pi / 2
-            translationX = imageSize.width - margin
-            translationY = imageSize.height - textWidth - margin
-            print("  - 橫向左：順時針旋轉 90°")
+            translationX = margin + totalHeight
+            translationY = (imageSize.height + textWidth) / 2 + bottomOffset
+            print("  - 橫向左：順時針旋轉 90°，左側中央")
         } else if deviceOrientation == .landscapeRight {
-            // Home 鍵在右側 → 文字需要逆時針旋轉 90 度
+            // Home 鍵在右側 → 相機拍攝時，文字需要逆時針旋轉 90 度
+            // 浮水印位置：左側中央偏下
             rotationAngle = -.pi / 2
-            translationX = totalHeight + margin
-            translationY = textWidth + margin
-            print("  - 橫向右：逆時針旋轉 90°")
+            translationX = margin
+            translationY = (imageSize.height - textWidth) / 2 - bottomOffset
+            print("  - 橫向右：逆時針旋轉 90°，左側中央")
         }
         
         print("  - 旋轉角度: \(rotationAngle * 180 / .pi)°")
+        print("  - 位置: (\(translationX), \(translationY))")
         print("  - 字體大小: \(baseFontSize)")
         
         // 移動到目標位置並旋轉

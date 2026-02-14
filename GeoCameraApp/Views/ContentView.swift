@@ -182,6 +182,8 @@ struct ContentView: View {
             // 只在有效的方向時更新
             if newOrientation.isPortrait || newOrientation.isLandscape {
                 deviceOrientation = newOrientation
+                // 同步更新 ViewModel 的方向
+                viewModel.deviceOrientation = newOrientation
             }
         }
         
@@ -189,9 +191,11 @@ struct ContentView: View {
         let initialOrientation = UIDevice.current.orientation
         if initialOrientation.isPortrait || initialOrientation.isLandscape {
             deviceOrientation = initialOrientation
+            viewModel.deviceOrientation = initialOrientation
         } else {
             // 如果初始方向未知，默認為直立
             deviceOrientation = .portrait
+            viewModel.deviceOrientation = .portrait
         }
     }
     
