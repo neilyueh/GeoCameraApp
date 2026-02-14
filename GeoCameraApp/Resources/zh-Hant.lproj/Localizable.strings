@@ -1,0 +1,43 @@
+/*
+  Localizable.strings
+  GeoCameraApp
+
+  Created by Claude on 2026/02/14.
+  繁體中文本地化字串
+*/
+
+/* 權限相關 */
+"permissions.camera.title" = "需要相機權限";
+"permissions.camera.message" = "此 App 需要使用相機來拍攝照片。請到「設定」中開啟相機權限。";
+"permissions.location.title" = "需要位置權限";
+"permissions.location.message" = "此 App 需要取得位置資訊。請到「設定」中開啟位置權限。";
+"permissions.photoLibrary.title" = "需要相簿權限";
+"permissions.photoLibrary.message" = "此 App 需要儲存照片到相簿。請到「設定」中開啟相簿權限。";
+"permissions.goToSettings" = "前往設定";
+"permissions.cancel" = "取消";
+
+/* 狀態訊息 */
+"status.camera.configuring" = "正在啟動相機...";
+"status.location.locating" = "正在定位中...";
+"status.address.resolving" = "正在取得地址...";
+"status.address.unavailable" = "無法取得地址";
+"status.capturing" = "拍照中...";
+"status.saving" = "儲存中...";
+
+/* 錯誤訊息 */
+"error.camera.unavailable" = "相機無法使用";
+"error.location.unavailable" = "無法取得位置";
+"error.photo.saveFailed" = "照片儲存失敗";
+"error.unknown" = "發生未知錯誤";
+
+/* 成功訊息 */
+"success.photo.saved" = "照片已儲存";
+
+/* 按鈕文字 */
+"button.capture" = "拍照";
+"button.retry" = "重試";
+"button.ok" = "確定";
+
+/* App 資訊 */
+"app.name" = "地理相機";
+"app.description" = "拍攝帶有地理位置資訊的照片";

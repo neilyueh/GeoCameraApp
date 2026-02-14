@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- 相機權限說明 -->
+	<key>NSCameraUsageDescription</key>
+	<string>此 App 需要使用相機來拍攝帶有地理資訊的照片</string>
+
+	<!-- 位置權限說明（使用 App 時） -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>此 App 需要取得您的位置資訊，以便在照片上顯示拍攝地點</string>
+
+	<!-- 相簿存取權限說明 -->
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>此 App 需要存取相簿以儲存拍攝的照片</string>
+</dict>
+</plist>
