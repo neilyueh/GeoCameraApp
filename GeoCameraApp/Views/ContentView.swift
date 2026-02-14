@@ -11,8 +11,12 @@ import AVFoundation
 /// 主畫面
 struct ContentView: View {
     @StateObject private var viewModel = CameraViewModel()
-    @State private var orientation = UIDeviceOrientation.portrait
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
     
+    // 追蹤設備方向
+    @State private var deviceOrientation: UIDeviceOrientation = UIDevice.current.orientation
+
     var body: some View {
         ZStack {
             // 相機預覽層（最底層）
@@ -52,13 +56,11 @@ struct ContentView: View {
         }
         .onAppear {
             viewModel.startServices()
-            // 開始監聽方向變化
-            startOrientationObserver()
+            startOrientationMonitoring()
         }
         .onDisappear {
             viewModel.stopServices()
-            // 停止監聽方向變化
-            stopOrientationObserver()
+            stopOrientationMonitoring()
         }
         .alert(isPresented: .constant(viewModel.errorMessage != nil)) {
             Alert(
@@ -70,65 +72,14 @@ struct ContentView: View {
             )
         }
     }
-    
-    // MARK: - Orientation Detection
-    
-    private func startOrientationObserver() {
-        // 啟用裝置方向通知
-        UIDevice.current.beginGeneratingDeviceOrientationNotifications()
-        
-        // 監聽方向變化
-        NotificationCenter.default.addObserver(
-            forName: UIDevice.orientationDidChangeNotification,
-            object: nil,
-            queue: .main
-        ) { _ in
-            let newOrientation = UIDevice.current.orientation
-            // 只處理有效的方向（排除 unknown, faceUp, faceDown）
-            if newOrientation.isValidInterfaceOrientation {
-                orientation = newOrientation
-                viewModel.deviceOrientation = newOrientation
-                print("📱 裝置方向變更: \(orientationName(newOrientation))")
-            }
-        }
-    }
-    
-    private func stopOrientationObserver() {
-        NotificationCenter.default.removeObserver(self, name: UIDevice.orientationDidChangeNotification, object: nil)
-        UIDevice.current.endGeneratingDeviceOrientationNotifications()
-    }
-    
-    private func orientationName(_ orientation: UIDeviceOrientation) -> String {
-        switch orientation {
-        case .portrait: return "直立"
-        case .portraitUpsideDown: return "倒立"
-        case .landscapeLeft: return "橫向左"
-        case .landscapeRight: return "橫向右"
-        case .faceUp: return "平放向上"
-        case .faceDown: return "平放向下"
-        default: return "未知"
-        }
-    }
 
     // MARK: - Main Camera Interface
 
     private var mainCameraInterface: some View {
         ZStack {
-            // 資訊顯示（右下角）
-            VStack {
-                Spacer()
-                HStack {
-                    Spacer()
-                    InfoOverlayView(
-                        date: viewModel.displayDate,
-                        time: viewModel.displayTime,
-                        latLong: viewModel.displayLatLong,
-                        address: viewModel.displayAddress
-                    )
-                    .padding(Constants.UI.screenEdgePadding)
-                }
-            }
-
+            // 資訊顯示 - 根據方向動態調整位置並旋轉
+            infoOverlayView
+            
             // 拍照按鈕 - 根據方向動態調整位置
             captureButtonLayout
             
@@ -145,46 +96,112 @@ struct ContentView: View {
         }
     }
     
+    // MARK: - Info Overlay with Rotation
+    
+    @ViewBuilder
+    private var infoOverlayView: some View {
+        GeometryReader { geometry in
+            if isLandscape {
+                // 橫向模式：資訊在左側（旋轉90度後文字水平顯示）
+                HStack {
+                    VStack {
+                        Spacer()
+                        InfoOverlayView(
+                            date: viewModel.displayDate,
+                            time: viewModel.displayTime,
+                            latLong: viewModel.displayLatLong,
+                            address: viewModel.displayAddress,
+                            isLandscape: true  // 告訴 InfoOverlayView 需要旋轉
+                        )
+                        Spacer()
+                    }
+                    .padding(.leading, Constants.UI.screenEdgePadding)
+                    // 向上偏移一點，避開底部的拍照按鈕區域
+                    .padding(.bottom, 100)
+                    
+                    Spacer()
+                }
+            } else {
+                // 直立模式：資訊在右下角，位於快門按鈕上方，避免重疊
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        InfoOverlayView(
+                            date: viewModel.displayDate,
+                            time: viewModel.displayTime,
+                            latLong: viewModel.displayLatLong,
+                            address: viewModel.displayAddress,
+                            isLandscape: false
+                        )
+                        .padding(.trailing, Constants.UI.screenEdgePadding)
+                    }
+                    // 為快門按鈕留出空間，避免重疊
+                    // 按鈕高度(80) + 底部padding(50) + 安全間距(20)
+                    .padding(.bottom, 150)
+                }
+            }
+        }
+        .animation(.easeInOut(duration: 0.3), value: isLandscape)
+    }
+    
     // MARK: - Capture Button Layout
     
     @ViewBuilder
     private var captureButtonLayout: some View {
-        if isLandscape {
-            // 橫向模式：按鈕在右側中央
+        // 按鈕始終在底部中央，不管方向如何
+        VStack {
+            Spacer()
             HStack {
                 Spacer()
-                VStack {
-                    Spacer()
-                    CaptureButtonView(
-                        action: viewModel.capturePhoto,
-                        isEnabled: viewModel.canCapture
-                    )
-                    Spacer()
-                }
-                .padding(.trailing, 30)
-            }
-            .transition(.move(edge: .trailing))
-        } else {
-            // 直立模式：按鈕在底部中央
-            VStack {
+                CaptureButtonView(
+                    action: viewModel.capturePhoto,
+                    isEnabled: viewModel.canCapture
+                )
                 Spacer()
-                HStack {
-                    Spacer()
-                    CaptureButtonView(
-                        action: viewModel.capturePhoto,
-                        isEnabled: viewModel.canCapture
-                    )
-                    Spacer()
-                }
-                .padding(.bottom, 50)
             }
-            .transition(.move(edge: .bottom))
+            .padding(.bottom, 50)
         }
     }
     
     // 判斷是否為橫向模式
     private var isLandscape: Bool {
-        return orientation.isLandscape
+        return deviceOrientation.isLandscape
+    }
+    
+    // MARK: - Orientation Monitoring
+    
+    private func startOrientationMonitoring() {
+        UIDevice.current.beginGeneratingDeviceOrientationNotifications()
+        NotificationCenter.default.addObserver(
+            forName: UIDevice.orientationDidChangeNotification,
+            object: nil,
+            queue: .main
+        ) { [self] _ in
+            let newOrientation = UIDevice.current.orientation
+            // 只在有效的方向時更新
+            if newOrientation.isPortrait || newOrientation.isLandscape {
+                deviceOrientation = newOrientation
+            }
+        }
+        
+        // 設置初始方向
+        let initialOrientation = UIDevice.current.orientation
+        if initialOrientation.isPortrait || initialOrientation.isLandscape {
+            deviceOrientation = initialOrientation
+        } else {
+            // 如果初始方向未知，默認為直立
+            deviceOrientation = .portrait
+        }
+    }
+    
+    private func stopOrientationMonitoring() {
+        NotificationCenter.default.removeObserver(
+            self,
+            name: UIDevice.orientationDidChangeNotification,
+            object: nil
+        )
+        UIDevice.current.endGeneratingDeviceOrientationNotifications()
     }
 
     // MARK: - Success Alert

@@ -13,6 +13,7 @@ struct InfoOverlayView: View {
     let time: String
     let latLong: String
     let address: String
+    var isLandscape: Bool = false  // 新增參數來控制旋轉
 
     var body: some View {
         VStack(alignment: .leading, spacing: Constants.UI.lineSpacing) {
@@ -29,6 +30,7 @@ struct InfoOverlayView: View {
             RoundedRectangle(cornerRadius: Constants.UI.infoCornerRadius)
                 .fill(Constants.Colors.infoBackground)
         )
+        .rotationEffect(.degrees(isLandscape ? 90 : 0))  // 橫向時旋轉90度
     }
 }
 
