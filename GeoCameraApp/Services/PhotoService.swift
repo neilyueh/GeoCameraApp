@@ -81,38 +81,69 @@ class PhotoService: PhotoServiceProtocol {
     /// 繪製正常方向的浮水印（直立模式）
     private func drawNormalWatermark(lines: [String], imageSize: CGSize) {
         // 設定文字樣式
-        let baseFontSize = max(imageSize.width * 0.03, 40)
+        var baseFontSize = max(imageSize.width * 0.03, 40)
         
         let paragraphStyle = NSMutableParagraphStyle()
         paragraphStyle.alignment = .left
         paragraphStyle.lineSpacing = 8
-
-        let attributes: [NSAttributedString.Key: Any] = [
-            .font: UIFont.systemFont(ofSize: baseFontSize, weight: .bold),
-            .foregroundColor: UIColor.white,
-            .paragraphStyle: paragraphStyle,
-            .strokeColor: UIColor.black,
-            .strokeWidth: -2.0
-        ]
-
-        // 計算尺寸
+        
         let lineHeight: CGFloat = baseFontSize + 8
         let padding: CGFloat = 20
-
-        let maxWidth = lines.map { text in
-            (text as NSString).size(withAttributes: attributes).width
-        }.max() ?? 0
+        let margin: CGFloat = 40
+        
+        // 🔧 計算可用寬度（確保不會超出畫面）
+        let availableWidth = imageSize.width - margin * 2 - padding * 2
+        
+        print("  - 圖片尺寸: \(imageSize)")
+        print("  - 可用寬度: \(availableWidth)")
+        
+        // 🔧 自適應計算字體大小和文字寬度
+        var attributes: [NSAttributedString.Key: Any]
+        var maxWidth: CGFloat
+        var adjustedLines = lines
+        
+        // 嘗試調整字體大小，直到文字能夠完全顯示
+        repeat {
+            attributes = [
+                .font: UIFont.systemFont(ofSize: baseFontSize, weight: .bold),
+                .foregroundColor: UIColor.white,
+                .paragraphStyle: paragraphStyle,
+                .strokeColor: UIColor.black,
+                .strokeWidth: -2.0
+            ]
+            
+            maxWidth = adjustedLines.map { text in
+                (text as NSString).size(withAttributes: attributes).width
+            }.max() ?? 0
+            
+            // 如果文字太長，縮小字體
+            if maxWidth > availableWidth && baseFontSize > 20 {
+                baseFontSize -= 2
+                print("  - 文字過長(\(maxWidth))，縮小字體至: \(baseFontSize)")
+            } else {
+                break
+            }
+        } while baseFontSize > 20
+        
+        // 🔧 如果字體已經很小但還是太長，截斷最長的行（通常是地址）
+        if maxWidth > availableWidth {
+            print("  - 文字仍過長，嘗試截斷地址")
+            adjustedLines = adjustLines(lines, maxWidth: availableWidth, attributes: attributes)
+            maxWidth = adjustedLines.map { text in
+                (text as NSString).size(withAttributes: attributes).width
+            }.max() ?? 0
+        }
 
         let textWidth = maxWidth + padding * 2
-        let totalHeight = CGFloat(lines.count) * lineHeight + padding * 2
+        let totalHeight = CGFloat(adjustedLines.count) * lineHeight + padding * 2
 
         // 計算位置（右下角）
-        let margin: CGFloat = 40
         let x = imageSize.width - textWidth - margin
         let y = imageSize.height - totalHeight - margin
         
         print("  - 浮水印位置: 右下角 (\(x), \(y))")
-        print("  - 字體大小: \(baseFontSize)")
+        print("  - 調整後字體大小: \(baseFontSize)")
+        print("  - 文字框尺寸: \(textWidth) x \(totalHeight)")
 
         // 繪製背景
         let backgroundRect = CGRect(x: x, y: y, width: textWidth, height: totalHeight)
@@ -121,7 +152,7 @@ class PhotoService: PhotoServiceProtocol {
         backgroundPath.fill()
 
         // 繪製文字
-        for (index, line) in lines.enumerated() {
+        for (index, line) in adjustedLines.enumerated() {
             let textY = y + padding + CGFloat(index) * lineHeight
             let textRect = CGRect(x: x + padding, y: textY, width: maxWidth, height: lineHeight)
             (line as NSString).draw(in: textRect, withAttributes: attributes)
@@ -133,34 +164,69 @@ class PhotoService: PhotoServiceProtocol {
         context.saveGState()
         
         // 設定文字樣式（橫向時使用較小的字體）
-        let baseFontSize = max(imageSize.height * 0.03, 40)  // 注意：橫向時使用 height
+        var baseFontSize = max(imageSize.height * 0.03, 40)  // 注意：橫向時使用 height
         
         let paragraphStyle = NSMutableParagraphStyle()
         paragraphStyle.alignment = .left
         paragraphStyle.lineSpacing = 8
-
-        let attributes: [NSAttributedString.Key: Any] = [
-            .font: UIFont.systemFont(ofSize: baseFontSize, weight: .bold),
-            .foregroundColor: UIColor.white,
-            .paragraphStyle: paragraphStyle,
-            .strokeColor: UIColor.black,
-            .strokeWidth: -2.0
-        ]
-
-        // 計算尺寸
+        
         let lineHeight: CGFloat = baseFontSize + 8
         let padding: CGFloat = 20
-
-        let maxWidth = lines.map { text in
-            (text as NSString).size(withAttributes: attributes).width
-        }.max() ?? 0
-
+        let margin: CGFloat = 40
+        
+        // 🔧 修復關鍵：計算旋轉後可用的最大寬度
+        // 當浮水印旋轉 90° 後，它的「寬度」會變成在圖片「高度」方向上的長度
+        // 因此，我們需要確保文字寬度不超過圖片的高度
+        let availableWidth = imageSize.height - margin * 2 - 200  // 預留更多邊距避免被截斷
+        
+        print("  - 圖片尺寸: \(imageSize)")
+        print("  - 可用寬度: \(availableWidth)")
+        
+        // 🔧 自適應計算字體大小和文字寬度
+        var attributes: [NSAttributedString.Key: Any]
+        var maxWidth: CGFloat
+        var adjustedLines = lines
+        
+        // 嘗試調整字體大小，直到文字能夠完全顯示
+        repeat {
+            attributes = [
+                .font: UIFont.systemFont(ofSize: baseFontSize, weight: .bold),
+                .foregroundColor: UIColor.white,
+                .paragraphStyle: paragraphStyle,
+                .strokeColor: UIColor.black,
+                .strokeWidth: -2.0
+            ]
+            
+            maxWidth = adjustedLines.map { text in
+                (text as NSString).size(withAttributes: attributes).width
+            }.max() ?? 0
+            
+            // 如果文字太長，縮小字體
+            if maxWidth > availableWidth && baseFontSize > 20 {
+                baseFontSize -= 2
+                print("  - 文字過長(\(maxWidth))，縮小字體至: \(baseFontSize)")
+            } else {
+                break
+            }
+        } while baseFontSize > 20
+        
+        // 🔧 如果字體已經很小但還是太長，截斷最長的行（通常是地址）
+        if maxWidth > availableWidth {
+            print("  - 文字仍過長，嘗試截斷地址")
+            adjustedLines = adjustLines(lines, maxWidth: availableWidth, attributes: attributes)
+            maxWidth = adjustedLines.map { text in
+                (text as NSString).size(withAttributes: attributes).width
+            }.max() ?? 0
+        }
+        
         let textWidth = maxWidth + padding * 2
-        let totalHeight = CGFloat(lines.count) * lineHeight + padding * 2
+        let totalHeight = CGFloat(adjustedLines.count) * lineHeight + padding * 2
+        
+        print("  - 調整後文字寬度: \(textWidth)")
+        print("  - 調整後字體大小: \(baseFontSize)")
 
         // 橫向模式：浮水印在左側中央偏下
         // 需要旋轉 90 度使文字水平顯示
-        let margin: CGFloat = 40
         let bottomOffset: CGFloat = 100  // 向上偏移，避開拍照按鈕
         
         var rotationAngle: CGFloat = 0
@@ -173,6 +239,13 @@ class PhotoService: PhotoServiceProtocol {
             rotationAngle = .pi / 2
             translationX = margin + totalHeight
             translationY = (imageSize.height + textWidth) / 2 + bottomOffset
+            
+            // 🔧 確保不會超出右邊界
+            if translationY + textWidth > imageSize.height {
+                translationY = imageSize.height - textWidth - margin
+                print("  - 調整 Y 位置避免超出邊界: \(translationY)")
+            }
+            
             print("  - 橫向左：順時針旋轉 90°，左側中央")
         } else if deviceOrientation == .landscapeRight {
             // Home 鍵在右側 → 相機拍攝時，文字需要逆時針旋轉 90 度
@@ -180,12 +253,19 @@ class PhotoService: PhotoServiceProtocol {
             rotationAngle = -.pi / 2
             translationX = margin
             translationY = (imageSize.height - textWidth) / 2 - bottomOffset
+            
+            // 🔧 確保不會超出左邊界
+            if translationY - textWidth < 0 {
+                translationY = textWidth + margin
+                print("  - 調整 Y 位置避免超出邊界: \(translationY)")
+            }
+            
             print("  - 橫向右：逆時針旋轉 90°，左側中央")
         }
         
         print("  - 旋轉角度: \(rotationAngle * 180 / .pi)°")
-        print("  - 位置: (\(translationX), \(translationY))")
-        print("  - 字體大小: \(baseFontSize)")
+        print("  - 最終位置: (\(translationX), \(translationY))")
+        print("  - 文字框尺寸: \(textWidth) x \(totalHeight)")
         
         // 移動到目標位置並旋轉
         context.translateBy(x: translationX, y: translationY)
@@ -198,13 +278,49 @@ class PhotoService: PhotoServiceProtocol {
         backgroundPath.fill()
 
         // 繪製文字
-        for (index, line) in lines.enumerated() {
+        for (index, line) in adjustedLines.enumerated() {
             let textY = padding + CGFloat(index) * lineHeight
             let textRect = CGRect(x: padding, y: textY, width: maxWidth, height: lineHeight)
             (line as NSString).draw(in: textRect, withAttributes: attributes)
         }
         
         context.restoreGState()
+    }
+    
+    /// 調整文字行，確保不超過最大寬度
+    private func adjustLines(_ lines: [String], maxWidth: CGFloat, attributes: [NSAttributedString.Key: Any]) -> [String] {
+        return lines.map { line in
+            let lineWidth = (line as NSString).size(withAttributes: attributes).width
+            if lineWidth <= maxWidth {
+                return line
+            }
+            
+            // 二分搜尋找到合適的截斷位置
+            var left = 0
+            var right = line.count
+            var bestLength = 0
+            
+            while left <= right {
+                let mid = (left + right) / 2
+                let index = line.index(line.startIndex, offsetBy: mid)
+                let substring = String(line[..<index]) + "..."
+                let width = (substring as NSString).size(withAttributes: attributes).width
+                
+                if width <= maxWidth {
+                    bestLength = mid
+                    left = mid + 1
+                } else {
+                    right = mid - 1
+                }
+            }
+            
+            if bestLength > 0 {
+                let index = line.index(line.startIndex, offsetBy: bestLength)
+                return String(line[..<index]) + "..."
+            } else {
+                return "..."
+            }
+        }
     }
     
     private func orientationName(_ orientation: UIDeviceOrientation) -> String {
