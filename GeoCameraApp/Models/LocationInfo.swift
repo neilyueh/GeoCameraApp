@@ -20,7 +20,7 @@ struct LocationInfo {
     /// 如果地理編碼失敗，此值為 nil
     let address: String?
 
-    /// 時間戳記（拍照當下的時間）
+    /// 時間戳記（拍照當下的時間，格式：YYYY/MM/DD HH:MM:SS）
     let timestamp: Date
 
     /// GPS 準確度（公尺）

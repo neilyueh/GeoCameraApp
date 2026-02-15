@@ -113,9 +113,6 @@ class CameraViewModel: ObservableObject {
             return
         }
         
-        // 如果沒有位置資訊，使用預設值
-        let locationInfo = currentLocationInfo ?? LocationInfo.unknown
-
         isCaptureInProgress = true
 
         Task {
@@ -132,8 +129,37 @@ class CameraViewModel: ObservableObject {
                 let image = try await cameraService.capturePhoto()
                 print("  ✅ 照片捕捉成功，尺寸: \(image.size)")
 
-                // 3. 添加浮水印（包含方向資訊）
-                print("  3️⃣ 添加浮水印...")
+                // 3. 🔧 在拍照當下取得最新的時間戳記和位置資訊
+                print("  3️⃣ 取得拍照當下的時間和位置...")
+                let captureTimestamp = Date()  // 拍照當下的精確時間
+                print("  ✅ 拍照時間: \(captureTimestamp.formattedDateTime())")
+                
+                // 使用當前位置資訊，但更新為拍照當下的時間戳記
+                let locationInfo: LocationInfo
+                if let currentInfo = currentLocationInfo {
+                    // 有位置資訊：保留經緯度和地址，但更新時間戳記為拍照當下
+                    locationInfo = LocationInfo(
+                        latitude: currentInfo.latitude,
+                        longitude: currentInfo.longitude,
+                        address: currentInfo.address,
+                        timestamp: captureTimestamp,  // 使用拍照當下的時間
+                        accuracy: currentInfo.accuracy
+                    )
+                    print("  ✅ 使用 GPS 位置 + 拍照時間")
+                } else {
+                    // 沒有位置資訊：使用預設值，但時間戳記仍為拍照當下
+                    locationInfo = LocationInfo(
+                        latitude: 0.0,
+                        longitude: 0.0,
+                        address: "位置資訊無法取得",
+                        timestamp: captureTimestamp,  // 使用拍照當下的時間
+                        accuracy: -1.0
+                    )
+                    print("  ⚠️ 無 GPS 位置，使用預設值 + 拍照時間")
+                }
+
+                // 4. 添加浮水印（使用更新後的位置資訊，包含正確的拍照時間）
+                print("  4️⃣ 添加浮水印...")
                 let watermarkedImage = photoService.addWatermark(
                     to: image,
                     with: locationInfo,
@@ -141,13 +167,13 @@ class CameraViewModel: ObservableObject {
                 )
                 print("  ✅ 浮水印添加成功")
 
-                // 4. 儲存到相簿
-                print("  4️⃣ 儲存到相簿...")
+                // 5. 儲存到相簿
+                print("  5️⃣ 儲存到相簿...")
                 try await photoService.saveToPhotoLibrary(watermarkedImage)
                 print("  ✅ 照片儲存成功")
 
-                // 5. 顯示成功提示
-                print("  5️⃣ 顯示成功提示")
+                // 6. 顯示成功提示
+                print("  6️⃣ 顯示成功提示")
                 showSuccessAlert = true
                 audioService.playHapticFeedback()
 
